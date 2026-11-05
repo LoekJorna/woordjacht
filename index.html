@@ -180,7 +180,7 @@ td{padding:2px 14px 2px 0}
 
   <details class="card">
     <summary>Spelregels &amp; punten</summary>
-    <p>Iedereen zoekt tegelijk woorden en schrijft ze op. Een woord maak je van letters die aan elkaar grenzen: horizontaal, verticaal of schuin. Elke dobbelsteen mag maar één keer per woord, en een woord heeft minimaal 4 letters. Als de tijd om is lees je om de beurt je woorden voor. Heeft iemand anders hetzelfde woord, dan strepen jullie het allebei weg. Voor de overgebleven woorden krijg je punten:</p>
+    <p>Iedereen zoekt tegelijk woorden en schrijft ze op. Een woord maak je van letters die aan elkaar grenzen: horizontaal, verticaal of schuin. Je mag een dobbelsteen vaker gebruiken in hetzelfde woord, zolang je in een slinger verder gaat en niet twee keer direct achter elkaar dezelfde dobbelsteen pakt. Een woord heeft minimaal 4 letters. Als de tijd om is lees je om de beurt je woorden voor. Heeft iemand anders hetzelfde woord, dan strepen jullie het allebei weg. Voor de overgebleven woorden krijg je punten:</p>
     <table>
       <tr><td>4 letters</td><td>1 punt</td></tr>
       <tr><td>5 letters</td><td>2 punten</td></tr>
@@ -222,7 +222,8 @@ function renderBoard(path=[], animate=false){
     t.className = "die" + (path.includes(i)?" hl":"");
     if(animate) t.style.animationDelay = (i*35)+"ms";
     const isAmb = "MWNZ".includes(L);
-    t.innerHTML = (path.includes(i)?`<span class="ord">${path.indexOf(i)+1}</span>`:"") +
+    const nums = path.map((p,n)=>p===i?n+1:0).filter(Boolean).join("·");
+    t.innerHTML = (nums?`<span class="ord">${nums}</span>`:"") +
       `<span${isAmb?' class="u"':''} style="transform:rotate(${-rotation}deg)">${L}</span>`;
     boardEl.appendChild(t);
   });
@@ -344,19 +345,19 @@ document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==
 function findPath(word){
   const w = word.toUpperCase();
   if(!letters.length || letters[0]==="?") return null;
-  const used = new Array(N*N).fill(false);
+  // Huisregel: een dobbelsteen mag vaker in één woord, maar niet twee keer direct
+  // achter elkaar. Elke stap gaat dus naar een aangrenzende (andere) dobbelsteen.
+  const dead = new Set(); // "cel,positie" waarvan we weten dat het niet lukt
   function dfs(i, k, path){
-    if(letters[i]!==w[k]) return null;
+    if(letters[i]!==w[k] || dead.has(i+","+k)) return null;
     path.push(i); if(k===w.length-1) return path.slice();
-    used[i]=true;
     const r=Math.floor(i/N), c=i%N;
     for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
       if(!dr&&!dc) continue;
       const rr=r+dr, cc=c+dc; if(rr<0||cc<0||rr>=N||cc>=N) continue;
-      const j=rr*N+cc; if(used[j]) continue;
-      const res=dfs(j,k+1,path); if(res) {used[i]=false; return res;}
+      const res=dfs(rr*N+cc,k+1,path); if(res) return res;
     }
-    used[i]=false; path.pop(); return null;
+    path.pop(); dead.add(i+","+k); return null;
   }
   for(let i=0;i<N*N;i++){ const p=dfs(i,0,[]); if(p) return p; }
   return null;
